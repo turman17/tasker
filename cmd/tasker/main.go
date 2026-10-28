@@ -18,7 +18,10 @@ func main() {
 	manager := task.CreateManager()
 	err := manager.AddTask("Learn go", "Random info")
 	check(err)
-	newTask, err := manager.GetTask(0)
+	err = manager.AddTask("Learn python", "New Random info")
 	check(err)
-	fmt.Printf("%+v\n", newTask)
+	tasks := manager.GetAll()
+	for i := range tasks {
+		fmt.Printf("Task: %+v\n", tasks[i])
+	}
 }

@@ -30,3 +30,11 @@ func (m *Manager) GetTask(id int) (Task, error) {
 	}
 	return task, nil
 }
+
+func (m *Manager) GetAll() map[int]Task {
+	newMap := make(map[int]Task)
+	for i := range(m.tasks){
+		newMap[i] = m.tasks[i]
+	}
+	return newMap
+}
