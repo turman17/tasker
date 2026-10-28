@@ -26,7 +26,7 @@ func (m *Manager) AddTask(title, description string) error {
 func (m *Manager) GetTask(id int) (Task, error) {
 	task, exists := m.tasks[id]
 	if !exists {
-		return Task{}, errors.New("id is out of range")
+		return Task{}, errors.New("task not found")
 	}
 	return task, nil
 }
