@@ -1,0 +1,32 @@
+package task
+
+import (
+	"errors"
+)
+
+type Manager struct {
+	tasks   map[int]Task
+	counter int
+}
+
+func CreateManager() Manager {
+	return Manager{tasks: make(map[int]Task)}
+}
+
+func (m *Manager) AddTask(title, description string) error {
+	task, err := createTask(title, description, m.counter)
+	if err != nil {
+		return err
+	}
+	m.counter++
+	m.tasks[task.ID] = task
+	return nil
+}
+
+func (m *Manager) GetTask(id int) (Task, error) {
+	task, exists := m.tasks[id]
+	if !exists {
+		return Task{}, errors.New("id is out of range")
+	}
+	return task, nil
+}
