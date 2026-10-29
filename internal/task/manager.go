@@ -33,7 +33,7 @@ func (m *Manager) GetTask(id int) (Task, error) {
 
 func (m *Manager) GetAll() map[int]Task {
 	newMap := make(map[int]Task)
-	for i := range(m.tasks){
+	for i := range m.tasks {
 		newMap[i] = m.tasks[i]
 	}
 	return newMap
@@ -45,5 +45,20 @@ func (m *Manager) DeleteTask(id int) error {
 		return errors.New("task not found")
 	}
 	delete(m.tasks, id)
+	return nil
+}
+
+func (m *Manager) UpdateTask(id, status int) error {
+	task, exists := m.tasks[id]
+	if !exists {
+		return errors.New("task not found")
+	}
+	if status < int(Todo) || status > int(Done) {
+		return errors.New("invalid task status")
+	}
+	
+	task.Status = Status(status)
+	m.tasks[id] = task
+
 	return nil
 }

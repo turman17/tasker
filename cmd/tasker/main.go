@@ -27,11 +27,11 @@ func main() {
 	}
 	err = manager.DeleteTask(1)
 	check(err)
+	err = manager.UpdateTask(0, 1)
+	check(err)
 	tasks = manager.GetAll()
 	fmt.Printf("\n\n")
 	for i := range tasks {
 		fmt.Printf("Task: %+v\n", tasks[i])
 	}
-	err = manager.DeleteTask(1)
-	check(err)
 }
