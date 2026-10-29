@@ -38,3 +38,12 @@ func (m *Manager) GetAll() map[int]Task {
 	}
 	return newMap
 }
+
+func (m *Manager) DeleteTask(id int) error {
+	_, exists := m.tasks[id]
+	if !exists {
+		return errors.New("task not found")
+	}
+	delete(m.tasks, id)
+	return nil
+}
