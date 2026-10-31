@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/turman17/tasker/internal/task"
 )
@@ -27,6 +28,26 @@ func (s *Server) getTasks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Printf("Failed to encode tasks: %v", err)
+	}
+}
+
+func (s *Server) getTask(w http.ResponseWriter, r *http.Request) {
+	rawID := r.PathValue("id")
+	id, err := strconv.Atoi(rawID)
+	if err != nil {
+		log.Printf("Failed to convert an id: %v", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	task, err := s.manager.GetTask(id)
+	if err != nil {
+		log.Printf("Failed to fetch task: %v", err)
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(task); err != nil {
+		log.Printf("Failed to encode task: %v", err)
 	}
 }
 
@@ -59,8 +80,11 @@ func NewServer() *Server {
 func (s *Server) StartServer(port int) error {
 	mux := http.NewServeMux()
 	fmt.Printf("Server started: %d\n", port)
+
 	mux.HandleFunc("GET /health", health)
 	mux.HandleFunc("GET /tasks", s.getTasks)
+	mux.HandleFunc("GET /tasks/{id}", s.getTask)
+	
 	mux.HandleFunc("POST /tasks", s.createTask)
 
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), mux)
