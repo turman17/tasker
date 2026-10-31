@@ -51,6 +51,24 @@ func (s *Server) getTask(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *Server) deleteTask(w http.ResponseWriter, r *http.Request) {
+	rawID := r.PathValue("id")
+	id, err := strconv.Atoi(rawID)
+	if err != nil {
+		log.Printf("Failed to convert an id: %v", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err = s.manager.DeleteTask(id)
+	if err != nil {
+		log.Printf("Failed to delete task: %v", err)
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	log.Printf("Deleted task: %d", id)
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 	var request createTaskRequest
 	err := json.NewDecoder(r.Body).Decode(&request)
@@ -84,8 +102,10 @@ func (s *Server) StartServer(port int) error {
 	mux.HandleFunc("GET /health", health)
 	mux.HandleFunc("GET /tasks", s.getTasks)
 	mux.HandleFunc("GET /tasks/{id}", s.getTask)
-	
+
 	mux.HandleFunc("POST /tasks", s.createTask)
+
+	mux.HandleFunc("DELETE /tasks/{id}", s.deleteTask)
 
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), mux)
 }

@@ -68,7 +68,7 @@ func (m *Manager) UpdateTask(id, status int) error {
 	if status < int(Todo) || status > int(Done) {
 		return errors.New("invalid task status")
 	}
-
+	
 	task.Status = Status(status)
 	m.tasks[id] = task
 
