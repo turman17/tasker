@@ -26,7 +26,7 @@ func (s *Server) getTasks(w http.ResponseWriter, r *http.Request) {
 	response := s.manager.GetAll()
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.Printf("Failed to encode tasks: :%v", err)
+		log.Printf("Failed to encode tasks: %v", err)
 	}
 }
 
