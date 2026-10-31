@@ -123,7 +123,6 @@ func TestManagerUpdateTask(t *testing.T) {
 		name   string
 		status Status
 	}{
-		{name: "todo", status: Todo},
 		{name: "in progress", status: InProgress},
 		{name: "done", status: Done},
 	}
@@ -157,6 +156,7 @@ func TestManagerUpdateTaskErrors(t *testing.T) {
 		wantError string
 	}{
 		{name: "task not found", id: 99, status: int(Todo), wantError: "task not found"},
+		{name: "same status", id: 0, status: int(Todo), wantError: "invalid task status"},
 		{name: "status below range", id: 0, status: int(Todo) - 1, wantError: "invalid task status"},
 		{name: "status above range", id: 0, status: int(Done) + 1, wantError: "invalid task status"},
 	}
