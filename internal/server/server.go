@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -17,6 +18,10 @@ type Server struct {
 type createTaskRequest struct {
 	Title       string
 	Description string
+}
+
+type updateTaskStatus struct {
+	Status *int
 }
 
 func health(w http.ResponseWriter, r *http.Request) {
@@ -69,6 +74,38 @@ func (s *Server) deleteTask(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (s *Server) updateStatus(w http.ResponseWriter, r *http.Request) {
+	var request updateTaskStatus
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		log.Printf("Failed to decode task request: %v", err)
+		http.Error(w, "Invalid JSON request body", http.StatusBadRequest)
+		return
+	}
+	if request.Status == nil {
+		http.Error(w, "Status is required", http.StatusBadRequest)
+		return
+	}
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "Invalid task ID", http.StatusBadRequest)
+		return
+	}
+	if err := s.manager.UpdateTask(id, *request.Status); err != nil {
+		switch {
+		case errors.Is(err, task.ErrTaskNotFound):
+			http.Error(w, err.Error(), http.StatusNotFound)
+		case errors.Is(err, task.ErrInvalidStatus):
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		default:
+			log.Printf("Failed to update task: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
+		return
+	}
+	log.Printf("Updated task %d with status %d", id, *request.Status)
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 	var request createTaskRequest
 	err := json.NewDecoder(r.Body).Decode(&request)
@@ -106,6 +143,7 @@ func (s *Server) StartServer(port int) error {
 	mux.HandleFunc("POST /tasks", s.createTask)
 
 	mux.HandleFunc("DELETE /tasks/{id}", s.deleteTask)
+	mux.HandleFunc("PATCH /tasks/{id}", s.updateStatus)
 
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), mux)
 }

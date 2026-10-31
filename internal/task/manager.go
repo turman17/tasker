@@ -3,6 +3,7 @@ package task
 import (
 	"errors"
 	"sync"
+	"time"
 )
 
 type Manager struct {
@@ -10,6 +11,11 @@ type Manager struct {
 	counter int
 	mutex   sync.Mutex
 }
+
+var (
+	ErrTaskNotFound = errors.New("task not found")
+	ErrInvalidStatus = errors.New("invalid task status")
+)
 
 func CreateManager() Manager {
 	return Manager{tasks: make(map[int]Task)}
@@ -63,12 +69,14 @@ func (m *Manager) UpdateTask(id, status int) error {
 	defer m.mutex.Unlock()
 	task, exists := m.tasks[id]
 	if !exists {
-		return errors.New("task not found")
+		return ErrTaskNotFound
 	}
-	if status < int(Todo) || status > int(Done) {
-		return errors.New("invalid task status")
+	if status < int(Todo) || status > int(Done) || status == int(task.Status) {
+		return ErrInvalidStatus
 	}
-	
+	if status == int(Done){
+		task.DoneAt = time.Now()
+	}
 	task.Status = Status(status)
 	m.tasks[id] = task
 
