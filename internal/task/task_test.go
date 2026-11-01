@@ -39,8 +39,8 @@ func TestCreateTaskEmptyTitle(t *testing.T) {
 	if err == nil {
 		t.Fatal("createTask() error = nil, want an error")
 	}
-	if err.Error() != "title cant be empty" {
-		t.Errorf("createTask() error = %q, want %q", err, "title cant be empty")
+	if err.Error() != "title cannot be empty" {
+		t.Errorf("createTask() error = %q, want %q", err, "title cannot be empty")
 	}
 	if got != (Task{}) {
 		t.Errorf("createTask() task = %+v, want zero value", got)
