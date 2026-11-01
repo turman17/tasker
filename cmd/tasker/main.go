@@ -1,22 +1,30 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"os"
 
+	"github.com/turman17/tasker/internal/database"
 	"github.com/turman17/tasker/internal/server"
 )
 
-func check(err error) {
+func run() error {
+	db, err := database.GetConnection()
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		os.Exit(1)
+		return err
 	}
+	defer db.Close()
+
+	log.Print("Database connection established")
+
+	store := database.NewTaskStore(db)
+	serv := server.NewServer(store)
+	return serv.StartServer(5001)
 }
 
-
 func main() {
-	serv := server.NewServer()
-	check(serv.StartServer(5001))
-	
+	if err := run(); err != nil {
+		log.Printf("Application failed: %v", err)
+		os.Exit(1)
+	}
 }

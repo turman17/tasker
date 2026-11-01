@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,8 +13,16 @@ import (
 	"github.com/turman17/tasker/internal/task"
 )
 
+type TaskStore interface {
+	CreateTask(ctx context.Context, title, description string) (task.Task, error)
+	GetTask(ctx context.Context, id int) (task.Task, error)
+	ListTasks(ctx context.Context) ([]task.Task, error)
+	UpdateTaskStatus(ctx context.Context, id int, status task.Status) (task.Task, error)
+	DeleteTask(ctx context.Context, id int) (bool, error)
+}
+
 type Server struct {
-	manager *task.Manager
+	store TaskStore
 }
 
 type createTaskRequest struct {
@@ -30,7 +39,12 @@ func health(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) getTasks(w http.ResponseWriter, r *http.Request) {
-	response := s.manager.GetAll()
+	response, err := s.store.ListTasks(r.Context())
+	if err != nil {
+		log.Printf("Failed to list tasks: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Printf("Failed to encode tasks: %v", err)
@@ -45,14 +59,18 @@ func (s *Server) getTask(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	task, err := s.manager.GetTask(id)
+	found, err := s.store.GetTask(r.Context(), id)
 	if err != nil {
 		log.Printf("Failed to fetch task: %v", err)
-		http.Error(w, err.Error(), http.StatusNotFound)
+		if errors.Is(err, task.ErrTaskNotFound) {
+			http.Error(w, err.Error(), http.StatusNotFound)
+		} else {
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(task); err != nil {
+	if err := json.NewEncoder(w).Encode(found); err != nil {
 		log.Printf("Failed to encode task: %v", err)
 	}
 }
@@ -65,10 +83,14 @@ func (s *Server) deleteTask(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	err = s.manager.DeleteTask(id)
+	deleted, err := s.store.DeleteTask(r.Context(), id)
 	if err != nil {
 		log.Printf("Failed to delete task: %v", err)
-		http.Error(w, err.Error(), http.StatusNotFound)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	if !deleted {
+		http.Error(w, task.ErrTaskNotFound.Error(), http.StatusNotFound)
 		return
 	}
 	log.Printf("Deleted task: %d", id)
@@ -91,7 +113,7 @@ func (s *Server) updateStatus(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid task ID", http.StatusBadRequest)
 		return
 	}
-	if err := s.manager.UpdateTask(id, *request.Status); err != nil {
+	if _, err := s.store.UpdateTaskStatus(r.Context(), id, task.Status(*request.Status)); err != nil {
 		switch {
 		case errors.Is(err, task.ErrTaskNotFound):
 			http.Error(w, err.Error(), http.StatusNotFound)
@@ -120,21 +142,21 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Request body must contain exactly one JSON value", http.StatusBadRequest)
 		return
 	}
-	if err := s.manager.AddTask(request.Title, request.Description); err != nil {
+	if _, err := s.store.CreateTask(r.Context(), request.Title, request.Description); err != nil {
 		log.Printf("Failed to create task: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		if errors.Is(err, task.ErrInvalidTitle) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		} else {
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
 		return
 	}
 	log.Print("New task created")
 	w.WriteHeader(http.StatusCreated)
 }
 
-func NewServer() *Server {
-	manager := task.CreateManager()
-	server := Server{
-		manager: &manager,
-	}
-	return &server
+func NewServer(store TaskStore) *Server {
+	return &Server{store: store}
 }
 
 func (s *Server) StartServer(port int) error {
