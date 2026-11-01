@@ -1,7 +1,7 @@
 package task
 
 import (
-	"errors"
+	"strings"
 	"time"
 )
 
@@ -23,8 +23,8 @@ type Task struct {
 }
 
 func createTask(title, description string, counter int) (Task, error) {
-	if title == "" {
-		return Task{}, errors.New("title cant be empty")
+	if strings.TrimSpace(title) == "" {
+		return Task{}, ErrInvalidTitle
 	}
 	task := Task{ID: counter, Title: title,
 		Description: description,

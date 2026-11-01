@@ -15,6 +15,7 @@ type Manager struct {
 var (
 	ErrTaskNotFound = errors.New("task not found")
 	ErrInvalidStatus = errors.New("invalid task status")
+	ErrInvalidTitle = errors.New("title cannot be empty")
 )
 
 func CreateManager() Manager {
@@ -38,7 +39,7 @@ func (m *Manager) GetTask(id int) (Task, error) {
 	defer m.mutex.Unlock()
 	task, exists := m.tasks[id]
 	if !exists {
-		return Task{}, errors.New("task not found")
+		return Task{}, ErrTaskNotFound
 	}
 	return task, nil
 }
@@ -58,7 +59,7 @@ func (m *Manager) DeleteTask(id int) error {
 	defer m.mutex.Unlock()
 	_, exists := m.tasks[id]
 	if !exists {
-		return errors.New("task not found")
+		return ErrTaskNotFound
 	}
 	delete(m.tasks, id)
 	return nil
@@ -76,6 +77,8 @@ func (m *Manager) UpdateTask(id, status int) error {
 	}
 	if status == int(Done){
 		task.DoneAt = time.Now()
+	} else {
+		task.DoneAt = time.Time{}
 	}
 	task.Status = Status(status)
 	m.tasks[id] = task

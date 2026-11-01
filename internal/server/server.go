@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -108,19 +109,23 @@ func (s *Server) updateStatus(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 	var request createTaskRequest
-	err := json.NewDecoder(r.Body).Decode(&request)
-	if err != nil {
-		http.Error(w, "Invalid JSON request body", http.StatusBadRequest)
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&request); err != nil {
 		log.Printf("Failed to decode task request: %v", err)
+		http.Error(w, "Invalid JSON request body", http.StatusBadRequest)
 		return
 	}
-	err = s.manager.AddTask(request.Title, request.Description)
-	if err != nil {
+	var extra any
+	if err := decoder.Decode(&extra); err != io.EOF {
+		http.Error(w, "Request body must contain exactly one JSON value", http.StatusBadRequest)
+		return
+	}
+	if err := s.manager.AddTask(request.Title, request.Description); err != nil {
 		log.Printf("Failed to create task: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	log.Printf("New task created")
+	log.Print("New task created")
 	w.WriteHeader(http.StatusCreated)
 }
 
