@@ -2,16 +2,21 @@ package server
 
 import (
 	"context"
+	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/turman17/tasker/internal/task"
 )
+
+//go:embed static
+var staticFiles embed.FS
 
 type TaskStore interface {
 	CreateTask(ctx context.Context, title, description string) (task.Task, error)
@@ -142,7 +147,8 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Request body must contain exactly one JSON value", http.StatusBadRequest)
 		return
 	}
-	if _, err := s.store.CreateTask(r.Context(), request.Title, request.Description); err != nil {
+	created, err := s.store.CreateTask(r.Context(), request.Title, request.Description)
+	if err != nil {
 		log.Printf("Failed to create task: %v", err)
 		if errors.Is(err, task.ErrInvalidTitle) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -152,7 +158,11 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Print("New task created")
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
+	if err := json.NewEncoder(w).Encode(created); err != nil {
+		log.Printf("Failed to encode task: %v", err)
+	}
 }
 
 func NewServer(store TaskStore) *Server {
@@ -162,6 +172,12 @@ func NewServer(store TaskStore) *Server {
 func (s *Server) StartServer(port int) error {
 	mux := http.NewServeMux()
 	fmt.Printf("Server started: %d\n", port)
+
+	static, err := fs.Sub(staticFiles, "static")
+	if err != nil {
+		return err
+	}
+	mux.Handle("GET /", http.FileServerFS(static))
 
 	mux.HandleFunc("GET /health", health)
 	mux.HandleFunc("GET /tasks", s.getTasks)

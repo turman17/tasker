@@ -49,6 +49,13 @@ func TestCreateTask(t *testing.T) {
 	if created.Title != "Write tests" || created.Description != "Test the server" {
 		t.Errorf("created task = %+v, want submitted title and description", created)
 	}
+	var got task.Task
+	if err := json.NewDecoder(response.Body).Decode(&got); err != nil {
+		t.Fatalf("createTask() response body is not a task: %v", err)
+	}
+	if got.ID != created.ID || got.Title != created.Title {
+		t.Errorf("createTask() response = %+v, want %+v", got, created)
+	}
 }
 
 func TestCreateTaskErrors(t *testing.T) {
